@@ -1,0 +1,10 @@
+
+probe syscall.open
+{
+       printf ("%s(%d) open (%s)\n", execname(), pid(), argstr)
+}
+
+probe timer.ms(9000) # after 9 seconds
+{
+       exit ()
+}
