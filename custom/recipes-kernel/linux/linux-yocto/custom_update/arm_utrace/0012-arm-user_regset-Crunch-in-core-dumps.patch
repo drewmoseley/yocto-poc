@@ -1,0 +1,48 @@
+From 23184e06d2a7cff0df3187a90eee1d9cd1b38fde Mon Sep 17 00:00:00 2001
+From: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+Date: Tue, 6 Sep 2011 06:19:25 -0500
+Subject: [PATCH 12/15] arm: user_regset: Crunch in core dumps
+
+Porting the patch to 2.6.37.6.
+
+From: Roland McGrath <roland@redhat.com>
+Date: Thu, 16 Apr 2009 19:20:23 -0700
+Subject: [PATCH 14/17] arm: user_regset: Crunch in core dumps
+
+This enables dumping the Crunch state in ELF core dumps.
+It gets its own note of the new type NT_ARM_CRUNCH.
+
+Signed-off-by: Roland McGrath <roland@redhat.com>
+Signed-off-by: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+---
+ arch/arm/kernel/ptrace.c |    1 +
+ include/linux/elf.h      |    1 +
+ 2 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/arch/arm/kernel/ptrace.c b/arch/arm/kernel/ptrace.c
+index 5206a69..0655163 100644
+--- a/arch/arm/kernel/ptrace.c
++++ b/arch/arm/kernel/ptrace.c
+@@ -996,6 +996,7 @@ static const struct user_regset arm_regsets[] = {
+ #endif
+ #ifdef CONFIG_CRUNCH
+ 	[REGSET_CRUNCH] = {
++		.core_note_type = NT_ARM_CRUNCH,
+ 		.n = sizeof(struct crunch_state) / sizeof(int),
+ 		.size = sizeof(int), .align = sizeof(int),
+ 		.get = crunch_get, .set = crunch_set
+diff --git a/include/linux/elf.h b/include/linux/elf.h
+index 9db9189..641ecc7 100644
+--- a/include/linux/elf.h
++++ b/include/linux/elf.h
+@@ -396,6 +396,7 @@ typedef struct elf64_shdr {
+ #define NT_S390_PREFIX	0x305		/* s390 prefix register */
+ #define NT_S390_LAST_BREAK	0x306	/* s390 breaking event address */
+ #define NT_ARM_WMMX	0x400		/* ARM iWMMXt registers */
++#define NT_ARM_CRUNCH	0x401		/* ARM Crunch registers */
+ 
+ 
+ /* Note header in a PT_NOTE section */
+-- 
+1.7.0.4
+

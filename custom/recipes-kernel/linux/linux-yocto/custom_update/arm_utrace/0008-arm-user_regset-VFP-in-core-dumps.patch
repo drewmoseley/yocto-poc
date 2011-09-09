@@ -1,0 +1,40 @@
+From bedf62ae31c2e45b441e97623619b72d29315974 Mon Sep 17 00:00:00 2001
+From: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+Date: Tue, 6 Sep 2011 05:52:22 -0500
+Subject: [PATCH 08/15] arm: user_regset: VFP in core dumps
+
+Porting the patch to 2.6.37.6.
+
+From: Roland McGrath <roland@redhat.com>
+Date: Thu, 16 Apr 2009 18:54:19 -0700
+Subject: [PATCH 10/17] arm: user_regset: VFP in core dumps
+
+This enables dumping the VFP state in ELF core dumps.
+It gets its own note.
+
+I reused the NT_PRXFPREG type code already used for extended-FP
+state on x86, because it seems to fit logically.  It would be just
+as easy to define a new code called NT_ARM_VFP in linux/elf.h if
+that is preferable.
+
+Signed-off-by: Roland McGrath <roland@redhat.com>
+Signed-off-by: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+---
+ arch/arm/kernel/ptrace.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/arch/arm/kernel/ptrace.c b/arch/arm/kernel/ptrace.c
+index d78cbe7..3be43e7 100644
+--- a/arch/arm/kernel/ptrace.c
++++ b/arch/arm/kernel/ptrace.c
+@@ -954,6 +954,7 @@ static const struct user_regset arm_regsets[] = {
+ 	},
+ #ifdef CONFIG_VFP
+ 	[REGSET_VFP] = {
++		.core_note_type = NT_PRXFPREG,
+ 		.n = sizeof(struct user_vfp) / sizeof(long),
+ 		.size = sizeof(long), .align = sizeof(long),
+ 		.get = vfp_get, .set = vfp_set
+-- 
+1.7.0.4
+

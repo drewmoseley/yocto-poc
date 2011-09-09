@@ -1,0 +1,16 @@
+patch 0001-arm-arch_ptrace-indentation.patch
+patch 0002-arm-tracehook_report_syscall.patch
+patch 0003-arm-tracehook_signal_handler.patch
+patch 0004-arm-user_regset-general-regs.patch
+patch 0005-arm-user_regset-FPU-regs.patch
+patch 0006-arm-CORE_DUMP_USE_REGSET.patch
+patch 0007-arm-user_regset-VFP-regs.patch
+patch 0008-arm-user_regset-VFP-in-core-dumps.patch
+patch 0009-arm-user_regset-iWMMXt-regs.patch
+patch 0010-arm-user_regset-iWMMXt-in-core-dumps.patch
+patch 0011-arm-user_regset-Crunch-regs.patch
+patch 0012-arm-user_regset-Crunch-in-core-dumps.patch
+patch 0013-arm-user_regset-thread-pointer-in-core-dumps.patch
+patch 0014-arm-asm-syscall.h-unfinished.patch
+patch 0015-arm-HAVE_ARCH_TRACEHOOK.patch
+

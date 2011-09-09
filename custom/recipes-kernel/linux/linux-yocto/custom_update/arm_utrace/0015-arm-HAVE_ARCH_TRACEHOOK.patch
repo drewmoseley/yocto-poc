@@ -1,0 +1,35 @@
+From dcba3da3e0fd0a1a5b2a563661619dc2a20ffbde Mon Sep 17 00:00:00 2001
+From: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+Date: Tue, 6 Sep 2011 06:52:30 -0500
+Subject: [PATCH 15/15] arm: HAVE_ARCH_TRACEHOOK
+
+Porting the patch to 2.6.37.6.
+
+From: Roland McGrath <roland@redhat.com>
+Date: Thu, 16 Apr 2009 21:59:03 -0700
+Subject: [PATCH 17/17] arm: HAVE_ARCH_TRACEHOOK
+
+All the prerequisites are in place, so wire up HAVE_ARCH_TRACEHOOK for arm.
+The immediate effect of this is to make /proc/pid/syscall work.
+
+Signed-off-by: Roland McGrath <roland@redhat.com>
+Signed-off-by: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+---
+ arch/arm/Kconfig |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/arch/arm/Kconfig b/arch/arm/Kconfig
+index d56d21c..ba016fb 100644
+--- a/arch/arm/Kconfig
++++ b/arch/arm/Kconfig
+@@ -9,6 +9,7 @@ config ARM
+ 	select GENERIC_ATOMIC64 if (!CPU_32v6K || !AEABI)
+ 	select HAVE_OPROFILE if (HAVE_PERF_EVENTS)
+ 	select HAVE_ARCH_KGDB
++	select HAVE_ARCH_TRACEHOOK
+ 	select HAVE_KPROBES if (!XIP_KERNEL && !THUMB2_KERNEL)
+ 	select HAVE_KRETPROBES if (HAVE_KPROBES)
+ 	select HAVE_FUNCTION_TRACER if (!XIP_KERNEL)
+-- 
+1.7.0.4
+

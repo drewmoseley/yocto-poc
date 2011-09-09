@@ -1,0 +1,111 @@
+From 06abf17c9c822acd27183ebc30e2ee834b81215d Mon Sep 17 00:00:00 2001
+From: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+Date: Tue, 6 Sep 2011 05:26:54 -0500
+Subject: [PATCH 05/15] arm: user_regset: FPU regs
+
+Porting the patch to 2.6.37.6.
+
+From: Roland McGrath <roland@redhat.com>
+Date: Thu, 16 Apr 2009 18:36:34 -0700
+Subject: [PATCH 07/17] arm: user_regset: FPU regs
+
+This converts PTRACE_GETFPREGS/PTRACE_SETFPREGS into user_regset form.
+There should be no change in the ptrace behavior.
+
+Signed-off-by: Roland McGrath <roland@redhat.com>
+Signed-off-by: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+---
+ arch/arm/kernel/ptrace.c |   46 +++++++++++++++++++++++++++++++++++-----------
+ 1 files changed, 35 insertions(+), 11 deletions(-)
+
+diff --git a/arch/arm/kernel/ptrace.c b/arch/arm/kernel/ptrace.c
+index 1324ea6..9c6008d 100644
+--- a/arch/arm/kernel/ptrace.c
++++ b/arch/arm/kernel/ptrace.c
+@@ -735,21 +735,38 @@ static int gpr_set(struct task_struct *target,
+ /*
+  * Get the child FPU state.
+  */
+-static int ptrace_getfpregs(struct task_struct *tsk, void __user *ufp)
++static int user_fp_get(struct task_struct *target,
++		       const struct user_regset *regset,
++		       unsigned int pos, unsigned int count,
++		       void *kbuf, void __user *ubuf)
+ {
+-	return copy_to_user(ufp, &task_thread_info(tsk)->fpstate,
+-			    sizeof(struct user_fp)) ? -EFAULT : 0;
++	return user_regset_copyout(&pos, &count, &kbuf, &ubuf,
++				   &task_thread_info(target)->fpstate,
++				   0, sizeof(struct user_fp));
++}
++
++/*
++ * Decide if the FPU state is interesting enough to look at or dump.
++ */
++static int user_fp_active(struct task_struct *target,
++			  const struct user_regset *regset)
++{
++	struct thread_info *thread = task_thread_info(target);
++	return (thread->used_cp[1] || thread->used_cp[2]) ? regset->n : 0;
+ }
+ 
+ /*
+  * Set the child FPU state.
+  */
+-static int ptrace_setfpregs(struct task_struct *tsk, void __user *ufp)
++static int user_fp_set(struct task_struct *target,
++		       const struct user_regset *regset,
++		       unsigned int pos, unsigned int count,
++		       const void *kbuf, const void __user *ubuf)
+ {
+-	struct thread_info *thread = task_thread_info(tsk);
++	struct thread_info *thread = task_thread_info(target);
+ 	thread->used_cp[1] = thread->used_cp[2] = 1;
+-	return copy_from_user(&thread->fpstate, ufp,
+-			      sizeof(struct user_fp)) ? -EFAULT : 0;
++	return user_regset_copyin(&pos, &count, &kbuf, &ubuf,
++				  &thread->fpstate, 0, sizeof(struct user_fp));
+ }
+ 
+ #ifdef CONFIG_IWMMXT
+@@ -868,6 +885,7 @@ static int ptrace_setvfpregs(struct task_struct *tsk, void __user *data)
+  */
+ enum {
+ 	REGSET_GPR,
++	REGSET_FP,
+ };
+ 
+ static const struct user_regset arm_regsets[] = {
+@@ -876,6 +894,12 @@ static const struct user_regset arm_regsets[] = {
+ 		.size = sizeof(long), .align = sizeof(long),
+ 		.get = gpr_get, .set = gpr_set
+ 	},
++	[REGSET_FP] = {
++		.core_note_type = NT_PRFPREG,
++		.n = sizeof(struct user_fp) / sizeof(long),
++		.size = sizeof(long), .align = sizeof(long),
++		.active = user_fp_active, .get = user_fp_get, .set = user_fp_set
++	},
+ };
+ 
+ static const struct user_regset_view user_arm_view = {
+@@ -1138,12 +1162,12 @@ long arch_ptrace(struct task_struct *child, long request,
+ 					     0, sizeof(struct pt_regs), datap);
+ 
+ 	case PTRACE_GETFPREGS:
+-		ret = ptrace_getfpregs(child, datap);
+-		break;
++		return copy_regset_to_user(child, &user_arm_view, REGSET_FP,
++					   0, sizeof(struct user_fp), datap);
+ 		
+ 	case PTRACE_SETFPREGS:
+-		ret = ptrace_setfpregs(child, datap);
+-		break;
++		return copy_regset_from_user(child, &user_arm_view, REGSET_FP,
++					     0, sizeof(struct user_fp), datap);
+ 
+ #ifdef CONFIG_IWMMXT
+ 	case PTRACE_GETWMMXREGS:
+-- 
+1.7.0.4
+

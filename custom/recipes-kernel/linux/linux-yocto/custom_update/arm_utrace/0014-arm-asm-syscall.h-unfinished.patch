@@ -1,0 +1,128 @@
+From 20df92a0d8253ce139ca81688a2b296ae033af6d Mon Sep 17 00:00:00 2001
+From: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+Date: Tue, 6 Sep 2011 06:48:00 -0500
+Subject: [PATCH 14/15] arm: asm/syscall.h (unfinished)
+
+Porting the patch to 2.6.37.6.
+
+From: Roland McGrath <roland@redhat.com>
+Date: Thu, 16 Apr 2009 21:57:13 -0700
+Subject: [PATCH 16/17] arm: asm/syscall.h (unfinished)
+
+This provides the user_stack_pointer() macro in asm/ptrace.h,
+which some new arch-independent code wants to be able to use.
+
+It also adds the asm/syscall.h header to let arch-independent
+code interpret the registers as system call arguments or return.
+
+The syscall_get_nr() function here is not really right.  I don't
+know enough about ARM to finish it correctly.  It needs to figure
+out if the blocked user task is really in the kernel for a system
+call and return -1 if not.  I also did not try to handle all the
+different ABI variants, which I don't really understand.
+
+Until this is fixed, /proc/pid/syscall can show bogus results
+for a process that is blocked inside a fault or something else
+that's not a system call.  (It's probably all wrong for !AEABI too.)
+
+Signed-off-by: Roland McGrath <roland@redhat.com>
+Signed-off-by: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+---
+ arch/arm/include/asm/ptrace.h  |    4 +-
+ arch/arm/include/asm/syscall.h |   65 ++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 67 insertions(+), 2 deletions(-)
+ create mode 100644 arch/arm/include/asm/syscall.h
+
+diff --git a/arch/arm/include/asm/ptrace.h b/arch/arm/include/asm/ptrace.h
+index 783d50f..5f61c10 100644
+--- a/arch/arm/include/asm/ptrace.h
++++ b/arch/arm/include/asm/ptrace.h
+@@ -184,7 +184,8 @@ static inline int valid_user_regs(struct pt_regs *regs)
+ 	return 0;
+ }
+ 
+-#define instruction_pointer(regs)	(regs)->ARM_pc
++#define instruction_pointer(regs)	((regs)->ARM_pc)
++#define user_stack_pointer(regs)	((regs)->ARM_sp)
+ 
+ #ifdef CONFIG_SMP
+ extern unsigned long profile_pc(struct pt_regs *regs);
+@@ -236,4 +237,3 @@ static inline unsigned long kernel_stack_pointer(struct pt_regs *regs)
+ #endif /* __ASSEMBLY__ */
+ 
+ #endif
+-
+diff --git a/arch/arm/include/asm/syscall.h b/arch/arm/include/asm/syscall.h
+new file mode 100644
+index 0000000..56aefe6
+--- /dev/null
++++ b/arch/arm/include/asm/syscall.h
+@@ -0,0 +1,65 @@
++/*
++ * Access to user system call parameters and results
++ *
++ * See asm-generic/syscall.h for descriptions of what we must do here.
++ */
++
++#ifndef _ASM_SYSCALL_H
++#define _ASM_SYSCALL_H	1
++
++#include <linux/sched.h>
++#include <linux/err.h>
++
++static inline long syscall_get_nr(struct task_struct *task,
++				  struct pt_regs *regs)
++{
++	/* XXX how to figure out if blocked in a syscall or not?? */
++
++	return regs->ARM_r7;	/* XXX apparently */
++	return task_thread_info(task)->syscall; /* XXX if changed via ptrace */
++}
++
++static inline void syscall_rollback(struct task_struct *task,
++				    struct pt_regs *regs)
++{
++	regs->ARM_r0 = regs->ARM_ORIG_r0;
++}
++
++static inline long syscall_get_error(struct task_struct *task,
++				     struct pt_regs *regs)
++{
++	return IS_ERR_VALUE(regs->ARM_r0) ? regs->ARM_r0 : 0;
++}
++
++static inline long syscall_get_return_value(struct task_struct *task,
++					    struct pt_regs *regs)
++{
++	return regs->ARM_r0;
++}
++
++static inline void syscall_set_return_value(struct task_struct *task,
++					    struct pt_regs *regs,
++					    int error, long val)
++{
++	regs->ARM_r0 = (long) error ?: val;
++}
++
++static inline void syscall_get_arguments(struct task_struct *task,
++					 struct pt_regs *regs,
++					 unsigned int i, unsigned int n,
++					 unsigned long *args)
++{
++	BUG_ON(i + n > 6);
++	memcpy(args, &regs->uregs[i], n * sizeof(args[0]));
++}
++
++static inline void syscall_set_arguments(struct task_struct *task,
++					 struct pt_regs *regs,
++					 unsigned int i, unsigned int n,
++					 const unsigned long *args)
++{
++	BUG_ON(i + n > 6);
++	memcpy(&regs->uregs[i], args, n * sizeof(args[0]));
++}
++
++#endif	/* _ASM_SYSCALL_H */
+-- 
+1.7.0.4
+

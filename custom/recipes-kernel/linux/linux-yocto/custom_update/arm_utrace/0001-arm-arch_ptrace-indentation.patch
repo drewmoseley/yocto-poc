@@ -1,0 +1,167 @@
+From 5e618ff1b56a3249ad9010d301fa78c921e18b01 Mon Sep 17 00:00:00 2001
+From: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+Date: Tue, 6 Sep 2011 02:55:20 -0500
+Subject: [PATCH 01/15] arm: arch_ptrace indentation
+
+Porting the patch to 2.6.37.6.
+
+From: Roland McGrath <roland@redhat.com>
+Date: Thu, 16 Apr 2009 18:33:00 -0700
+Subject: [PATCH 02/17] arm: arch_ptrace indentation
+
+This changes the arch_ptrace() indentation to match the standard style.
+No change but the whitespace.
+
+Signed-off-by: Roland McGrath <roland@redhat.com>
+Signed-off-by: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+---
+ arch/arm/kernel/ptrace.c |  110 +++++++++++++++++++++++-----------------------
+ 1 files changed, 55 insertions(+), 55 deletions(-)
+
+diff --git a/arch/arm/kernel/ptrace.c b/arch/arm/kernel/ptrace.c
+index 3e97483..2579d15 100644
+--- a/arch/arm/kernel/ptrace.c
++++ b/arch/arm/kernel/ptrace.c
+@@ -1082,84 +1082,84 @@ long arch_ptrace(struct task_struct *child, long request,
+ 	unsigned long __user *datap = (unsigned long __user *) data;
+ 
+ 	switch (request) {
+-		case PTRACE_PEEKUSR:
+-			ret = ptrace_read_user(child, addr, datap);
+-			break;
++	case PTRACE_PEEKUSR:
++		ret = ptrace_read_user(child, addr, datap);
++		break;
+ 
+-		case PTRACE_POKEUSR:
+-			ret = ptrace_write_user(child, addr, data);
+-			break;
++	case PTRACE_POKEUSR:
++		ret = ptrace_write_user(child, addr, data);
++		break;
+ 
+-		case PTRACE_GETREGS:
+-			ret = ptrace_getregs(child, datap);
+-			break;
++	case PTRACE_GETREGS:
++		ret = ptrace_getregs(child, datap);
++		break;
+ 
+-		case PTRACE_SETREGS:
+-			ret = ptrace_setregs(child, datap);
+-			break;
++	case PTRACE_SETREGS:
++		ret = ptrace_setregs(child, datap);
++		break;
+ 
+-		case PTRACE_GETFPREGS:
+-			ret = ptrace_getfpregs(child, datap);
+-			break;
++	case PTRACE_GETFPREGS:
++		ret = ptrace_getfpregs(child, datap);
++		break;
+ 		
+-		case PTRACE_SETFPREGS:
+-			ret = ptrace_setfpregs(child, datap);
+-			break;
++	case PTRACE_SETFPREGS:
++		ret = ptrace_setfpregs(child, datap);
++		break;
+ 
+ #ifdef CONFIG_IWMMXT
+-		case PTRACE_GETWMMXREGS:
+-			ret = ptrace_getwmmxregs(child, datap);
+-			break;
++	case PTRACE_GETWMMXREGS:
++		ret = ptrace_getwmmxregs(child, datap);
++		break;
+ 
+-		case PTRACE_SETWMMXREGS:
+-			ret = ptrace_setwmmxregs(child, datap);
+-			break;
++	case PTRACE_SETWMMXREGS:
++		ret = ptrace_setwmmxregs(child, datap);
++		break;
+ #endif
+ 
+-		case PTRACE_GET_THREAD_AREA:
+-			ret = put_user(task_thread_info(child)->tp_value,
+-				       datap);
+-			break;
++	case PTRACE_GET_THREAD_AREA:
++		ret = put_user(task_thread_info(child)->tp_value,
++			       datap);
++		break;
+ 
+-		case PTRACE_SET_SYSCALL:
+-			task_thread_info(child)->syscall = data;
+-			ret = 0;
+-			break;
++	case PTRACE_SET_SYSCALL:
++		task_thread_info(child)->syscall = data;
++		ret = 0;
++		break;
+ 
+ #ifdef CONFIG_CRUNCH
+-		case PTRACE_GETCRUNCHREGS:
+-			ret = ptrace_getcrunchregs(child, datap);
+-			break;
++	case PTRACE_GETCRUNCHREGS:
++		ret = ptrace_getcrunchregs(child, datap);
++		break;
+ 
+-		case PTRACE_SETCRUNCHREGS:
+-			ret = ptrace_setcrunchregs(child, datap);
+-			break;
++	case PTRACE_SETCRUNCHREGS:
++		ret = ptrace_setcrunchregs(child, datap);
++		break;
+ #endif
+ 
+ #ifdef CONFIG_VFP
+-		case PTRACE_GETVFPREGS:
+-			ret = ptrace_getvfpregs(child, datap);
+-			break;
++	case PTRACE_GETVFPREGS:
++		ret = ptrace_getvfpregs(child, datap);
++		break;
+ 
+-		case PTRACE_SETVFPREGS:
+-			ret = ptrace_setvfpregs(child, datap);
+-			break;
++	case PTRACE_SETVFPREGS:
++		ret = ptrace_setvfpregs(child, datap);
++		break;
+ #endif
+ 
+ #ifdef CONFIG_HAVE_HW_BREAKPOINT
+-		case PTRACE_GETHBPREGS:
+-			ret = ptrace_gethbpregs(child, addr,
+-						(unsigned long __user *)data);
+-			break;
+-		case PTRACE_SETHBPREGS:
+-			ret = ptrace_sethbpregs(child, addr,
+-						(unsigned long __user *)data);
+-			break;
++	case PTRACE_GETHBPREGS:
++		ret = ptrace_gethbpregs(child, addr,
++					(unsigned long __user *)data);
++		break;
++	case PTRACE_SETHBPREGS:
++		ret = ptrace_sethbpregs(child, addr,
++					(unsigned long __user *)data);
++		break;
+ #endif
+ 
+-		default:
+-			ret = ptrace_request(child, request, addr, data);
+-			break;
++	default:
++		ret = ptrace_request(child, request, addr, data);
++		break;
+ 	}
+ 
+ 	return ret;
+-- 
+1.7.0.4
+

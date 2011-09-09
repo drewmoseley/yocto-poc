@@ -1,0 +1,116 @@
+From de35f2dd59c1e0ae5f81a15a67858d8f623ab444 Mon Sep 17 00:00:00 2001
+From: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+Date: Tue, 6 Sep 2011 06:15:51 -0500
+Subject: [PATCH 11/15] arm: user_regset: Crunch regs
+
+Porting the patch to 2.6.37.6.
+
+From: Roland McGrath <roland@redhat.com>
+Date: Thu, 16 Apr 2009 19:03:48 -0700
+Subject: [PATCH 13/17] arm: user_regset: Crunch regs
+
+This converts the ptrace Crunch support into user_regset form.
+There should be no change in the ptrace behavior on CONFIG_CRUNCH.
+
+I am not set up to test any hardware with CONFIG_CRUNCH or to try
+any software that uses Crunch so as to verify it.  I've tested that
+it compiles.  This regset's code is as simple as any can be.
+
+Signed-off-by: Roland McGrath <roland@redhat.com>
+Signed-off-by: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+---
+ arch/arm/kernel/ptrace.c |   44 ++++++++++++++++++++++++++++++++------------
+ 1 files changed, 32 insertions(+), 12 deletions(-)
+
+diff --git a/arch/arm/kernel/ptrace.c b/arch/arm/kernel/ptrace.c
+index 6921918..5206a69 100644
+--- a/arch/arm/kernel/ptrace.c
++++ b/arch/arm/kernel/ptrace.c
+@@ -817,25 +817,33 @@ static int iwmmxt_set(struct task_struct *target,
+ /*
+  * Get the child Crunch state.
+  */
+-static int ptrace_getcrunchregs(struct task_struct *tsk, void __user *ufp)
++static int crunch_get(struct task_struct *target,
++		      const struct user_regset *regset,
++		      unsigned int pos, unsigned int count,
++		      void *kbuf, void __user *ubuf)
+ {
+-	struct thread_info *thread = task_thread_info(tsk);
++	struct thread_info *thread = task_thread_info(target);
+ 
+ 	crunch_task_disable(thread);  /* force it to ram */
+-	return copy_to_user(ufp, &thread->crunchstate, CRUNCH_SIZE)
+-		? -EFAULT : 0;
++
++	return user_regset_copyout(&pos, &count, &kbuf, &ubuf,
++				   &thread->crunchstate, 0, CRUNCH_SIZE);
+ }
+ 
+ /*
+  * Set the child Crunch state.
+  */
+-static int ptrace_setcrunchregs(struct task_struct *tsk, void __user *ufp)
++static int crunch_set(struct task_struct *target,
++		      const struct user_regset *regset,
++		      unsigned int pos, unsigned int count,
++		      const void *kbuf, const void __user *ubuf)
+ {
+-	struct thread_info *thread = task_thread_info(tsk);
++	struct thread_info *thread = task_thread_info(target);
+ 
+ 	crunch_task_release(thread);  /* force a reload */
+-	return copy_from_user(&thread->crunchstate, ufp, CRUNCH_SIZE)
+-		? -EFAULT : 0;
++
++	return user_regset_copyin(&pos, &count, &kbuf, &ubuf,
++				  &thread->crunchstate, 0, CRUNCH_SIZE);
+ }
+ #endif
+ 
+@@ -953,6 +961,9 @@ enum {
+ #ifdef CONFIG_IWMMXT
+ 	REGSET_IWMMXT,
+ #endif
++#ifdef CONFIG_CRUNCH
++	REGSET_CRUNCH,
++#endif
+ };
+ 
+ static const struct user_regset arm_regsets[] = {
+@@ -983,6 +994,13 @@ static const struct user_regset arm_regsets[] = {
+ 		.active = iwmmxt_active, .get = iwmmxt_get, .set = iwmmxt_set
+ 	},
+ #endif
++#ifdef CONFIG_CRUNCH
++	[REGSET_CRUNCH] = {
++		.n = sizeof(struct crunch_state) / sizeof(int),
++		.size = sizeof(int), .align = sizeof(int),
++		.get = crunch_get, .set = crunch_set
++	},
++#endif
+ };
+ 
+ static const struct user_regset_view user_arm_view = {
+@@ -1276,12 +1294,14 @@ long arch_ptrace(struct task_struct *child, long request,
+ 
+ #ifdef CONFIG_CRUNCH
+ 	case PTRACE_GETCRUNCHREGS:
+-		ret = ptrace_getcrunchregs(child, datap);
+-		break;
++		return copy_regset_from_user(child, &user_arm_view,
++					     REGSET_CRUNCH, 0, CRUNCH_SIZE,
++					     datap);
+ 
+ 	case PTRACE_SETCRUNCHREGS:
+-		ret = ptrace_setcrunchregs(child, datap);
+-		break;
++		return copy_regset_from_user(child, &user_arm_view,
++					     REGSET_CRUNCH, 0, CRUNCH_SIZE,
++					     datap);
+ #endif
+ 
+ #ifdef CONFIG_VFP
+-- 
+1.7.0.4
+

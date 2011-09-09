@@ -1,0 +1,48 @@
+From 133225b717bb0e11bf05d3a4b7cda29add48df95 Mon Sep 17 00:00:00 2001
+From: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+Date: Tue, 6 Sep 2011 06:09:16 -0500
+Subject: [PATCH 10/15] arm: user_regset: iWMMXt in core dumps
+
+Porting the patch to 2.6.37.6.
+
+From: Roland McGrath <roland@redhat.com>
+Date: Thu, 16 Apr 2009 18:59:12 -0700
+Subject: [PATCH 12/17] arm: user_regset: iWMMXt in core dumps
+
+This enables dumping the iWMMXt state in ELF core dumps if it was used.
+It gets its own note of the new type NT_ARM_WMMX.
+
+Signed-off-by: Roland McGrath <roland@redhat.com>
+Signed-off-by: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+---
+ arch/arm/kernel/ptrace.c |    1 +
+ include/linux/elf.h      |    1 +
+ 2 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/arch/arm/kernel/ptrace.c b/arch/arm/kernel/ptrace.c
+index ef2b143..6921918 100644
+--- a/arch/arm/kernel/ptrace.c
++++ b/arch/arm/kernel/ptrace.c
+@@ -977,6 +977,7 @@ static const struct user_regset arm_regsets[] = {
+ #endif
+ #ifdef CONFIG_IWMMXT
+ 	[REGSET_IWMMXT] = {
++		.core_note_type = NT_ARM_WMMX,
+ 		.n = sizeof(struct iwmmxt_struct) / sizeof(int),
+ 		.size = sizeof(int), .align = sizeof(int),
+ 		.active = iwmmxt_active, .get = iwmmxt_get, .set = iwmmxt_set
+diff --git a/include/linux/elf.h b/include/linux/elf.h
+index 4d60801..9db9189 100644
+--- a/include/linux/elf.h
++++ b/include/linux/elf.h
+@@ -395,6 +395,7 @@ typedef struct elf64_shdr {
+ #define NT_S390_CTRS	0x304		/* s390 control registers */
+ #define NT_S390_PREFIX	0x305		/* s390 prefix register */
+ #define NT_S390_LAST_BREAK	0x306	/* s390 breaking event address */
++#define NT_ARM_WMMX	0x400		/* ARM iWMMXt registers */
+ 
+ 
+ /* Note header in a PT_NOTE section */
+-- 
+1.7.0.4
+

@@ -1,0 +1,36 @@
+From 9af4a5bc9c77387d4b4823374ca0483a403e1cce Mon Sep 17 00:00:00 2001
+From: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+Date: Tue, 6 Sep 2011 04:49:12 -0500
+Subject: [PATCH 03/15] arm: tracehook_signal_handler
+
+Porting the patch to 2.6.37.6.
+
+From: Roland McGrath <roland@redhat.com>
+Date: Tue, 14 Apr 2009 23:48:42 -0700
+Subject: [PATCH 04/17] arm: tracehook_signal_handler
+
+This makes arm call the standard tracehook_signal_handler() hook
+in <linux/tracehook.h> after setting up a signal handler.
+
+Signed-off-by: Roland McGrath <roland@redhat.com>
+Signed-off-by: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+---
+ arch/arm/kernel/signal.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/arch/arm/kernel/signal.c b/arch/arm/kernel/signal.c
+index abaf844..9fb138b 100644
+--- a/arch/arm/kernel/signal.c
++++ b/arch/arm/kernel/signal.c
+@@ -676,6 +676,8 @@ handle_signal(unsigned long sig, struct k_sigaction *ka,
+ 	recalc_sigpending();
+ 	spin_unlock_irq(&tsk->sighand->siglock);
+ 
++	tracehook_signal_handler(sig, info, ka, regs, 0);
++
+ 	return 0;
+ }
+ 
+-- 
+1.7.0.4
+

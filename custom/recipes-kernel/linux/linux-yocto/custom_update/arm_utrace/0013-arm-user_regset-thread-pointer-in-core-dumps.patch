@@ -1,0 +1,99 @@
+From a1c8482dca7d8b479b799355049fcdd26160845e Mon Sep 17 00:00:00 2001
+From: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+Date: Tue, 6 Sep 2011 06:41:21 -0500
+Subject: [PATCH 13/15] arm: user_regset: thread pointer in core dumps
+
+Porting the patch to 2.6.37.6.
+
+From: Roland McGrath <roland@redhat.com>
+Date: Thu, 16 Apr 2009 21:49:17 -0700
+Subject: [PATCH 15/17] arm: user_regset: thread pointer in core dumps
+
+This wires up a proper user_regset for the $tp special register.
+It will appear in ELF core dumps in its own tiny note of the new
+type NT_ARM_TP.  The note will be omitted if $tp was 0.
+
+Signed-off-by: Roland McGrath <roland@redhat.com>
+Signed-off-by: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+---
+ arch/arm/kernel/ptrace.c |   37 +++++++++++++++++++++++++++++++++++++
+ include/linux/elf.h      |    1 +
+ 2 files changed, 38 insertions(+), 0 deletions(-)
+
+diff --git a/arch/arm/kernel/ptrace.c b/arch/arm/kernel/ptrace.c
+index 0655163..71e3d97 100644
+--- a/arch/arm/kernel/ptrace.c
++++ b/arch/arm/kernel/ptrace.c
+@@ -769,6 +769,37 @@ static int user_fp_set(struct task_struct *target,
+ 				  &thread->fpstate, 0, sizeof(struct user_fp));
+ }
+ 
++/*
++ * Fetch the thread pointer as a regset of its own.
++ * It's considered "active" (i.e. worth dumping) if it's nonzero.
++ */
++
++static int tp_get(struct task_struct *target,
++		  const struct user_regset *regset,
++		  unsigned int pos, unsigned int count,
++		  void *kbuf, void __user *ubuf)
++{
++	return user_regset_copyout(&pos, &count, &kbuf, &ubuf,
++				   &task_thread_info(target)->tp_value,
++				   0, sizeof(unsigned long));
++}
++
++static int tp_set(struct task_struct *target,
++		  const struct user_regset *regset,
++		  unsigned int pos, unsigned int count,
++		  const void *kbuf, const void __user *ubuf)
++{
++	return user_regset_copyin(&pos, &count, &kbuf, &ubuf,
++				  &task_thread_info(target)->tp_value,
++				  0, sizeof(unsigned long));
++}
++
++static int tp_active(struct task_struct *target,
++		     const struct user_regset *regset)
++{
++	return task_thread_info(target)->tp_value == 0 ? 0 : 1;
++}
++
+ #ifdef CONFIG_IWMMXT
+ 
+ /*
+@@ -955,6 +986,7 @@ static int vfp_set(struct task_struct *target,
+ enum {
+ 	REGSET_GPR,
+ 	REGSET_FP,
++	REGSET_TP,
+ #ifdef CONFIG_VFP
+ 	REGSET_VFP,
+ #endif
+@@ -978,6 +1010,11 @@ static const struct user_regset arm_regsets[] = {
+ 		.size = sizeof(long), .align = sizeof(long),
+ 		.active = user_fp_active, .get = user_fp_get, .set = user_fp_set
+ 	},
++	[REGSET_TP] = {
++		.core_note_type = NT_ARM_TP,
++		.size = sizeof(long), .align = sizeof(long), .n = 1,
++		.active = tp_active, .get = tp_get, .set = tp_set
++	},
+ #ifdef CONFIG_VFP
+ 	[REGSET_VFP] = {
+ 		.core_note_type = NT_PRXFPREG,
+diff --git a/include/linux/elf.h b/include/linux/elf.h
+index 641ecc7..555b7dd 100644
+--- a/include/linux/elf.h
++++ b/include/linux/elf.h
+@@ -397,6 +397,7 @@ typedef struct elf64_shdr {
+ #define NT_S390_LAST_BREAK	0x306	/* s390 breaking event address */
+ #define NT_ARM_WMMX	0x400		/* ARM iWMMXt registers */
+ #define NT_ARM_CRUNCH	0x401		/* ARM Crunch registers */
++#define NT_ARM_TP	0x402		/* ARM thread pointer */
+ 
+ 
+ /* Note header in a PT_NOTE section */
+-- 
+1.7.0.4
+

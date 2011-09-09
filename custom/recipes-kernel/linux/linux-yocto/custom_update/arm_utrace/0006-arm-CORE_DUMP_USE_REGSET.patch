@@ -1,0 +1,39 @@
+From 52152348e83e47b37d9a79cdc21ed87b83b36361 Mon Sep 17 00:00:00 2001
+From: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+Date: Tue, 6 Sep 2011 05:33:58 -0500
+Subject: [PATCH 06/15] arm: CORE_DUMP_USE_REGSET
+
+Porting the patch to 2.6.37.6.
+
+From: Roland McGrath <roland@redhat.com>
+Date: Thu, 16 Apr 2009 18:29:59 -0700
+Subject: [PATCH 08/17] arm: CORE_DUMP_USE_REGSET
+
+Flip on CORE_DUMP_USE_REGSET now that arm has user_regset support
+for the general and FPU register sets that appear in core dumps.
+
+This moves arm in line with the preferred new code to gather
+registers for ELF core dumps.  There is no material change to
+what appears in core dumps.
+
+Signed-off-by: Roland McGrath <roland@redhat.com>
+Signed-off-by: Andrew Gabbasov <andrew_gabbasov@mentor.com>
+---
+ arch/arm/include/asm/elf.h |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/arch/arm/include/asm/elf.h b/arch/arm/include/asm/elf.h
+index 8bb66bc..4481823 100644
+--- a/arch/arm/include/asm/elf.h
++++ b/arch/arm/include/asm/elf.h
+@@ -106,6 +106,7 @@ struct task_struct;
+ int dump_task_regs(struct task_struct *t, elf_gregset_t *elfregs);
+ #define ELF_CORE_COPY_TASK_REGS dump_task_regs
+ 
++#define CORE_DUMP_USE_REGSET
+ #define ELF_EXEC_PAGESIZE	4096
+ 
+ /* This is the location that an ET_DYN program is loaded if exec'ed.  Typical
+-- 
+1.7.0.4
+
