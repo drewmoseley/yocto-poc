@@ -5,6 +5,7 @@
 EXTERNAL_TOOLCHAIN ?= "/usr/local/csl/2011.03"
 TOOLCHAIN_PATH ?= "${EXTERNAL_TOOLCHAIN}"
 
+TARGET_VENDOR = "-none"
 CSTRIPLET_powerpc = "powerpc-linux-gnu"
 CSTRIPLET_powerpc64 = "powerpc-linux-gnu"
 CSTRIPLET_arm = "arm-none-linux-gnueabi"
