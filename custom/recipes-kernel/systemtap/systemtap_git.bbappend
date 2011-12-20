@@ -5,7 +5,7 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=b234ee4d69f5fce4486a80fdaf4a4263"
 inherit gettext module-base
 DEPENDS = "elfutils sqlite3 systemtap-native virtual/kernel"
 
-SRCREV = "f52d32a9f57d228627ee08e39f0bbcf3f3faae20"
+SRCREV = "f1d4f4313f6aa3e46211a47cfdcccfbd70bf769e"
 
 PR = "r7"
 PV = "1.6+git${SRCPV}"
