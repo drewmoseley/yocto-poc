@@ -13,4 +13,4 @@ patch 0012-arm-user_regset-Crunch-in-core-dumps.patch
 patch 0013-arm-user_regset-thread-pointer-in-core-dumps.patch
 patch 0014-arm-asm-syscall.h-unfinished.patch
 patch 0015-arm-HAVE_ARCH_TRACEHOOK.patch
-
+patch 0001-ARM-6668-1-ptrace-remove-single-step-emulation-code.patch
