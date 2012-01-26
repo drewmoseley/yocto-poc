@@ -12,6 +12,7 @@ PV = "1.6+git${SRCPV}"
 
 SRC_URI = " \
 	git://sourceware.org/git/systemtap.git;protocol=git \
+	file://0001-Add-sysroot-option.patch \
 	"
 # systemtap doesn't support mips
 COMPATIBLE_HOST = '(x86_64.*|i.86.*|powerpc.*|arm.*)-linux'

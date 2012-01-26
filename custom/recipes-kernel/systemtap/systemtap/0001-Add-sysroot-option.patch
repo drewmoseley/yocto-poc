@@ -1,0 +1,290 @@
+From f39d261d41b3616d8c7518cc830bb36858e9ad72 Mon Sep 17 00:00:00 2001
+From: Wade Farnsworth <wade_farnsworth@mentor.com>
+Date: Wed, 21 Dec 2011 08:41:24 -0600
+Subject: [PATCH] Add --sysroot option
+
+This adds a --sysroot option to facilitate different file locations for
+user-space processes and libraries at compile-time versus run-time when
+generating stap kernel modules for a remote system.
+
+For example if we compile the probe:
+
+process("/bin/foo").begin {}
+
+while passing "--sysroot=/bar/baz" to stap, symbols will be taken from
+/bar/baz/bin/foo, but the resulting .ko will still refer to /bin/foo.
+This allows the probe to be used on a different machine than the one it
+is compiled on, so long as the compiling machine replicates the
+necessary files in the sysroot directory.  This is a fairly typical use case
+for embedded Linux.
+
+Known limitations:
+1. Probes must contain the absolute file path to the process or library.
+   If a relative path is used, it will be assumed to be located in the
+   top level of the sysroot.
+2. Similarly probes on scripts containing "#!/usr/bin/env bash" or similar
+   will also assume that the interpreter is located in the sysroot
+   top level.
+The reason for these limitations is that we do not have access to the
+target machine's environment compile-time, so some assumptions must
+necessarily be made.
+
+Signed-off-by: Wade Farnsworth <wade_farnsworth@mentor.com>
+---
+ session.cxx       |   16 ++++++++++++++++
+ session.h         |    1 +
+ tapset-itrace.cxx |    5 ++++-
+ tapset-utrace.cxx |    5 ++++-
+ tapsets.cxx       |   53 +++++++++++++++++++++++++++++++++++++++++------------
+ 5 files changed, 66 insertions(+), 14 deletions(-)
+
+diff --git a/session.cxx b/session.cxx
+index f4ce8a6..1c1adbf 100644
+--- a/session.cxx
++++ b/session.cxx
+@@ -84,6 +84,7 @@ systemtap_session::systemtap_session ():
+   kernel_release = string (buf.release);
+   release = kernel_release;
+   kernel_build_tree = "/lib/modules/" + kernel_release + "/build";
++  sysroot = string();
+   architecture = machine = normalize_machine(buf.machine);
+ 
+   for (unsigned i=0; i<5; i++) perpass_verbose[i]=0;
+@@ -534,6 +535,8 @@ systemtap_session::usage (int exitcode)
+     "              yes,no,ask,<timeout value>\n"
+     "   --dump-probe-types\n"
+     "              show a list of available probe types.\n"
++    "   --sysroot=DIR\n"
++    "              specify sysroot directory where executables are located"
+     , compatible.c_str()) << endl
+   ;
+ 
+@@ -587,6 +590,7 @@ systemtap_session::parse_cmdline (int argc, char * const argv [])
+ #define LONG_OPT_PRIVILEGE 28
+ #define LONG_OPT_SUPPRESS_HANDLER_ERRORS 29
+ #define LONG_OPT_MODINFO 30
++#define LONG_OPT_SYSROOT 31
+       // NB: also see find_hash(), usage(), switch stmt below, stap.1 man page
+       static struct option long_options[] = {
+         { "kelf", 0, &long_opt, LONG_OPT_KELF },
+@@ -625,6 +629,7 @@ systemtap_session::parse_cmdline (int argc, char * const argv [])
+         { "privilege", 1, &long_opt, LONG_OPT_PRIVILEGE },
+         { "suppress-handler-errors", 0, &long_opt, LONG_OPT_SUPPRESS_HANDLER_ERRORS },
+         { "modinfo", 1, &long_opt, LONG_OPT_MODINFO },
++        { "sysroot", 1, &long_opt, LONG_OPT_SYSROOT },
+         { NULL, 0, NULL, 0 }
+       };
+       int grc = getopt_long (argc, argv, "hVvtp:I:e:o:R:r:a:m:kgPc:x:D:bs:uqwl:d:L:FS:B:WG:",
+@@ -1151,6 +1156,17 @@ systemtap_session::parse_cmdline (int argc, char * const argv [])
+               modinfos.push_back (string(optarg));
+               break;
+ 
++            case LONG_OPT_SYSROOT:
++              {
++                  const char *spath = canonicalize_file_name (optarg);
++                  if (spath == NULL) {
++                      cerr << _F("ERROR: %s is an invalid directory for --sysroot", optarg) << endl;
++                      return 1;
++                  }
++                  sysroot = string(spath) + "/";
++                  break;
++              }
++
+             default:
+               // NOTREACHED unless one added a getopt option but not a corresponding switch/case:
+               cerr << _F("Unhandled long argument id %d", long_opt) << endl;
+diff --git a/session.h b/session.h
+index 64a22a5..f1a301b 100644
+--- a/session.h
++++ b/session.h
+@@ -140,6 +140,7 @@ public:
+   std::string kernel_base_release;
+   std::string kernel_build_tree;
+   std::string kernel_source_tree;
++  std::string sysroot;
+   std::map<std::string,std::string> kernel_config;
+   std::set<std::string> kernel_exports;
+   std::string machine;
+diff --git a/tapset-itrace.cxx b/tapset-itrace.cxx
+index 1a9bf67..77811d5 100644
+--- a/tapset-itrace.cxx
++++ b/tapset-itrace.cxx
+@@ -114,8 +114,11 @@ struct itrace_builder: public derived_probe_builder
+     // If we have a path, we need to validate it.
+     if (has_path)
+       {
+-        path = find_executable (path);
++        size_t pos;
++        path = find_executable (sess.sysroot + path);
+         sess.unwindsym_modules.insert (path);
++        if (!sess.sysroot.empty() && ((pos = path.find(sess.sysroot)) != string::npos))
++          path.replace(pos, sess.sysroot.length(), "/");
+       }
+ 
+     finished_results.push_back(new itrace_derived_probe(sess, base, location,
+diff --git a/tapset-utrace.cxx b/tapset-utrace.cxx
+index 64ba900..11cf292 100644
+--- a/tapset-utrace.cxx
++++ b/tapset-utrace.cxx
+@@ -679,8 +679,11 @@ struct utrace_builder: public derived_probe_builder
+       }
+     else if (has_path)
+       {
+-        path = find_executable (path);
++        size_t pos;
++        path = find_executable (sess.sysroot + path);
+         sess.unwindsym_modules.insert (path);
++	if (!sess.sysroot.empty() && ((pos = path.find(sess.sysroot)) != string::npos))
++	  path.replace(pos, sess.sysroot.length(), "/");
+       }
+     else if (has_pid)
+       {
+diff --git a/tapsets.cxx b/tapsets.cxx
+index 177f565..50464dc 100644
+--- a/tapsets.cxx
++++ b/tapsets.cxx
+@@ -584,13 +584,13 @@ base_query::base_query(dwflpp & dw, literal_map_t const & params):
+       has_statement = get_number_param(params, TOK_STATEMENT, statement_num_val);
+ 
+       if (has_process)
+-        module_val = find_executable (module_val);
++        module_val = find_executable (sess.sysroot + module_val);
+       if (has_library)
+         {
+           if (! contains_glob_chars (library_name))
+             {
+               path = module_val;
+-              module_val = find_executable (library_name, "LD_LIBRARY_PATH");
++              module_val = find_executable (sess.sysroot + library_name, "LD_LIBRARY_PATH");
+             }
+           else
+             path = library_name;
+@@ -1139,7 +1139,7 @@ dwarf_query::add_probe_point(const string& dw_funcname,
+ {
+   string reloc_section; // base section for relocation purposes
+   Dwarf_Addr reloc_addr; // relocated
+-  const string& module = dw.module_name; // "kernel" or other
++  string& module = dw.module_name; // "kernel" or other
+   string funcname = dw_funcname;
+ 
+   assert (! has_absolute); // already handled in dwarf_builder::build()
+@@ -1190,6 +1190,14 @@ dwarf_query::add_probe_point(const string& dw_funcname,
+ 
+       if (has_process)
+         {
++	  if (!sess.sysroot.empty())
++            {
++              size_t pos;
++              if ((pos = module.find(sess.sysroot)) != string::npos)
++                module.replace(pos, sess.sysroot.length(), "/");
++              if ((pos = path.find(sess.sysroot)) != string::npos)
++                path.replace(pos, sess.sysroot.length(), "/");
++            }
+           results.push_back (new uprobe_derived_probe(funcname, filename, line,
+                                                       module, reloc_section, addr, reloc_addr,
+                                                       *this, scope_die));
+@@ -6548,13 +6556,14 @@ dwarf_builder::build(systemtap_session & sess,
+     }
+   else if (get_param (parameters, TOK_PROCESS, module_name) || has_null_param(parameters, TOK_PROCESS))
+       {
++      module_name = sess.sysroot + module_name;
+       if(has_null_param(filled_parameters, TOK_PROCESS))
+         {
+           wordexp_t words;
+           int rc = wordexp(sess.cmd.c_str(), &words, WRDE_NOCMD|WRDE_UNDEF);
+           if(rc || words.we_wordc <= 0)
+             throw semantic_error(_("unspecified process probe is invalid without a -c COMMAND"));
+-          module_name = words.we_wordv[0];
++          module_name = sess.sysroot + words.we_wordv[0];
+           filled_parameters[TOK_PROCESS] = new literal_string(module_name);// this needs to be used in place of the blank map
+           // in the case of TOK_MARK we need to modify locations as well
+           if(location->components[0]->functor==TOK_PROCESS &&
+@@ -6607,9 +6616,15 @@ dwarf_builder::build(systemtap_session & sess,
+                   if (sess.verbose > 1)
+                     clog << _F("Expanded process(\"%s\") to process(\"%s\")",
+                                module_name.c_str(), eglobbed.c_str()) << endl;
++                  if (!sess.sysroot.empty())
++                    {
++                      size_t pos;
++                      if ((pos = eglobbed.find(sess.sysroot)) != string::npos)
++                        eglobbed.replace(pos, sess.sysroot.length(), "/");
++                    }
+ 
+                   probe_point::component* ppc = new probe_point::component (TOK_PROCESS,
+-                                                                            new literal_string (eglobbed));
++                                                    new literal_string (eglobbed));
+                   ppc->tok = location->components[0]->tok; // overwrite [0] slot, pattern matched above
+                   pp->components[0] = ppc;
+ 
+@@ -6681,12 +6696,12 @@ dwarf_builder::build(systemtap_session & sess,
+                     if (p3 != string::npos)
+                     {
+                        string env_path = path.substr(p3);
+-                       user_path = find_executable (env_path);
++                       user_path = find_executable (sess.sysroot + env_path);
+                     }
+                 }
+                 else
+                 {
+-                   user_path = find_executable (path);
++                  user_path = find_executable (sess.sysroot + path);
+                 }
+ 
+                 struct stat st;
+@@ -6707,8 +6722,12 @@ dwarf_builder::build(systemtap_session & sess,
+ 
+                   // synthesize a new probe_point, with the expanded string
+                   probe_point *pp = new probe_point (*location);
++                  string user_path_tgt = user_path;
++                  size_t pos;
++                  if (!sess.sysroot.empty() && ((pos = path.find(sess.sysroot)) != string::npos))
++                    user_path_tgt.replace(pos, sess.sysroot.length(), "/");
+                   probe_point::component* ppc = new probe_point::component (TOK_PROCESS,
+-                                                                            new literal_string (user_path.c_str()));
++                                                                            new literal_string (user_path_tgt.c_str()));
+                   ppc->tok = location->components[0]->tok; // overwrite [0] slot, pattern matched above
+                   pp->components[0] = ppc;
+ 
+@@ -6727,7 +6746,7 @@ dwarf_builder::build(systemtap_session & sess,
+ 
+       if(get_param (parameters, TOK_LIBRARY, user_lib)
+ 	  && user_lib.length() && ! contains_glob_chars (user_lib))
+-	module_name = find_executable (user_lib, "LD_LIBRARY_PATH");
++	module_name = find_executable (sess.sysroot + user_lib, "LD_LIBRARY_PATH");
+       else
+ 	module_name = user_path; // canonicalize it
+ 
+@@ -8195,7 +8214,7 @@ struct kprobe_builder: public derived_probe_builder
+ 
+ 
+ void
+-kprobe_builder::build(systemtap_session &,
++kprobe_builder::build(systemtap_session & sess,
+ 		      probe * base,
+ 		      probe_point * location,
+ 		      literal_map_t const & parameters,
+@@ -8218,9 +8237,19 @@ kprobe_builder::build(systemtap_session &,
+   has_library = get_param (parameters, TOK_LIBRARY, library);
+ 
+   if (has_path)
+-    path = find_executable (path);
++    {
++      size_t pos;
++      path = find_executable (sess.sysroot + path);
++      if (!sess.sysroot.empty() && ((pos = path.find(sess.sysroot)) != string::npos))
++        path.replace(pos, sess.sysroot.length(), "/");
++    }
+   if (has_library)
+-    library = find_executable (library, "LD_LIBRARY_PATH");
++    {
++      size_t pos;
++      library = find_executable (sess.sysroot + library, "LD_LIBRARY_PATH");
++      if (!sess.sysroot.empty() && ((pos = library.find(sess.sysroot)) != string::npos))
++        library.replace(pos, sess.sysroot.length(), "/");
++    }
+ 
+   if (has_function_str)
+     {
+-- 
+1.7.0.4
+

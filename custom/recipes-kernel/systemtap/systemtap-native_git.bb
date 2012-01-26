@@ -10,6 +10,7 @@ PV = "1.6+git${SRCPV}"
 
 SRC_URI = " \
 	git://sources.redhat.com/git/systemtap.git;protocol=git \
+	file://0001-Add-sysroot-option.patch \
         "
 
 BUILD_CFLAGS += "-Wno-error=unused-parameter"
